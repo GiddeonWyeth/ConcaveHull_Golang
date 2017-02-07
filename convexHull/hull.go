@@ -58,7 +58,7 @@ func hull(pointset Points, concavity int) {
 
 	cellSize := math.Ceil(1 / (float64(len(pointset)) / (occupiedArea[0] * occupiedArea[1])));
 
-	concave := concave(convex, math.Pow(float64(concavity), 2), maxSearchArea, Grid{innerPoints, cellSize}, []bool{});
+	concave := concave(convex, math.Pow(float64(concavity), 2), maxSearchArea, createGrid{innerPoints, cellSize}, []bool{});
 
 	return concave;
 }

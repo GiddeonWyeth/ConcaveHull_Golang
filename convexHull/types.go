@@ -5,8 +5,21 @@ type Point [2] float64
 type Points []Point
 
 type Grid struct {
-	Cells    Points
+	Cells    [][][2]float64
 	CellSize float64
+}
+
+func createGrid(points Points, cellSize float64) Grid {
+	var grid = Grid{Cells: make(map[float64][float64][]), CellSize:cellSize};
+
+	for _, point := range points {
+		var cellXY = grid.point2CellXY(point)
+		x := cellXY[0]
+		y := cellXY[1];
+		grid.Cells[x][y] = point
+	}
+
+	return grid
 }
 
 func (slice Points) include(value int) int {
@@ -44,6 +57,34 @@ func (points Points) Less(i, j int) bool {
 	return points[i][0] < points[j][0]
 }
 
+func (points Points) splice(index, amount int, elements ...Point) Points {
+	newslice := make(Points, 0)
+	for i := 0; i < index; i++ {
+		newslice = append(newslice, points[i])
+	}
+	for i := index + amount; i < len(points); i++ {
+		newslice = append(newslice, points[i])
+	}
+	for _, el := range elements {
+		newslice = append(newslice, el)
+	}
+	return newslice
+}
+
+func splice(slice, index, amount int, elements ...Point) Points {
+	newslice := make(Points, 0)
+	for i := 0; i < index; i++ {
+		newslice = append(newslice, slice[i])
+	}
+	for i := index + amount; i < len(slice); i++ {
+		newslice = append(newslice, slice[i])
+	}
+	for _, el := range elements {
+		newslice = append(newslice, el)
+	}
+	return newslice
+}
+
 func (grid Grid) rangePoints(bbox [4]float64) Points {
 	// (Array) -> Array
 	tlCellXY := grid.point2CellXY([2]float64{bbox[0], bbox[1]})
@@ -58,27 +99,25 @@ func (grid Grid) rangePoints(bbox [4]float64) Points {
 
 	return points;
 }
-//
-//removePoint: func (point) {
-//	// (Array) -> Array
-//	var cellXY = this.point2CellXY(point),
-//		cell = this._cells[cellXY[0]][cellXY[1]],
-//		pointIdxInCell;
-//
-//	for
-//	(
-//	var i = 0; i < cell.length; i++) {
-//	if (cell[i][0] === point[0] && cell[i][1] == = point[1]) {
-//	pointIdxInCell = i;
-//	break;
-//	}
-//	}
-//
-//	cell.splice(pointIdxInCell, 1);
-//
-//	return cell;
-//},
-//
+
+func (grid Grid) removePoint(point Point) bool {
+	// (Array) -> Array
+	var cellXY = grid.point2CellXY(point)
+	cell := grid.Cells[cellXY[0]][cellXY[1]]
+	var pointIdxInCell int;
+
+	for i := 0; i < len(cell); i++ {
+		if (cell[i][0] == point[0] && cell[i][1] == point[1]) {
+			pointIdxInCell = i;
+			break;
+		}
+	}
+
+	cell.splice(pointIdxInCell, 1);
+
+	return true;
+},
+
 func (grid Grid) point2CellXY(point [2]float64) [2]float64 {
 	// (Array) -> Array
 	x := (point[0] / grid.CellSize)
