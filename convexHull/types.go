@@ -5,24 +5,28 @@ type Point [2] float64
 type Points []Point
 
 type Grid struct {
-	Cells    [][][2]float64
+	Cells    map[int]map[int]Points
 	CellSize float64
 }
 
 func createGrid(points Points, cellSize float64) Grid {
-	var grid = Grid{Cells: make(map[float64][float64][]), CellSize:cellSize};
+
+	var grid = Grid{Cells: make(map[int]map[int]Points), CellSize:cellSize};
 
 	for _, point := range points {
 		var cellXY = grid.point2CellXY(point)
 		x := cellXY[0]
 		y := cellXY[1];
-		grid.Cells[x][y] = point
+		if _, ok := grid.Cells[x]; !ok {
+			grid.Cells[x] = make(map[int]Points)
+		}
+		grid.Cells[x][y] = append(grid.Cells[x][y], point)
 	}
 
 	return grid
 }
 
-func (slice Points) include(value int) int {
+func (slice Points) include(value Point) bool {
 	for _, v := range slice {
 		if (v == value) {
 			return true
@@ -31,10 +35,10 @@ func (slice Points) include(value int) int {
 	return false
 }
 
-func Filter(vs Points) Points {
-	vsf := make([]string, 0)
-	for _, v := range vs {
-		if vs.include(v) {
+func Filter(search, points Points) Points {
+	vsf := make(Points, 0)
+	for _, v := range search {
+		if !points.include(v) {
 			vsf = append(vsf, v)
 		}
 	}
@@ -49,7 +53,6 @@ func (points Points) Len() int {
 	return len(points)
 }
 
-// lets sort our Points by x and, if equal, by y
 func (points Points) Less(i, j int) bool {
 	if points[i][0] == points[j][0] {
 		return points[i][1] < points[j][1]
@@ -57,51 +60,42 @@ func (points Points) Less(i, j int) bool {
 	return points[i][0] < points[j][0]
 }
 
-func (points Points) splice(index, amount int, elements ...Point) Points {
+func splice(points Points, index, amount int, elements ...Point) Points {
 	newslice := make(Points, 0)
 	for i := 0; i < index; i++ {
 		newslice = append(newslice, points[i])
+	}
+	for _, el := range elements {
+		newslice = append(newslice, el)
 	}
 	for i := index + amount; i < len(points); i++ {
 		newslice = append(newslice, points[i])
 	}
-	for _, el := range elements {
-		newslice = append(newslice, el)
-	}
+
 	return newslice
 }
 
-func splice(slice, index, amount int, elements ...Point) Points {
-	newslice := make(Points, 0)
-	for i := 0; i < index; i++ {
-		newslice = append(newslice, slice[i])
+func (points Points) reverse() Points {
+	for i, j := 0, len(points) - 1; i < j; i, j = i + 1, j - 1 {
+		points[i], points[j] = points[j], points[i]
 	}
-	for i := index + amount; i < len(slice); i++ {
-		newslice = append(newslice, slice[i])
-	}
-	for _, el := range elements {
-		newslice = append(newslice, el)
-	}
-	return newslice
+	return points
 }
 
 func (grid Grid) rangePoints(bbox [4]float64) Points {
-	// (Array) -> Array
 	tlCellXY := grid.point2CellXY([2]float64{bbox[0], bbox[1]})
 	brCellXY := grid.point2CellXY([2]float64{bbox[2], bbox[3]})
 	var points Points;
 
 	for x := tlCellXY[0]; x <= brCellXY[0]; x++ {
 		for y := tlCellXY[1]; y <= brCellXY[1]; y++ {
-			points = append(points, grid.Cells[x][y]);
+			points = append(points, grid.Cells[x][y]...);
 		}
 	}
-
 	return points;
 }
 
-func (grid Grid) removePoint(point Point) bool {
-	// (Array) -> Array
+func (grid Grid) removePoint(point Point) Grid {
 	var cellXY = grid.point2CellXY(point)
 	cell := grid.Cells[cellXY[0]][cellXY[1]]
 	var pointIdxInCell int;
@@ -112,19 +106,17 @@ func (grid Grid) removePoint(point Point) bool {
 			break;
 		}
 	}
+	grid.Cells[cellXY[0]][cellXY[1]] = splice(grid.Cells[cellXY[0]][cellXY[1]], pointIdxInCell, 1)
 
-	cell.splice(pointIdxInCell, 1);
-
-	return true;
-},
-
-func (grid Grid) point2CellXY(point [2]float64) [2]float64 {
-	// (Array) -> Array
-	x := (point[0] / grid.CellSize)
-	y := (point[1] / grid.CellSize);
-	return [2]float64{x, y};
+	return grid;
 }
 
-func (grid Grid) extendBbox(bbox [4]float64, scaleFactor int) [4]float64 {
+func (grid Grid) point2CellXY(point [2]float64) [2]int {
+	x := int(point[0] / grid.CellSize)
+	y := int(point[1] / grid.CellSize);
+	return [2]int{x, y};
+}
+
+func (grid Grid) extendBbox(bbox [4]float64, scaleFactor float64) [4]float64 {
 	return [4]float64{bbox[0] - (scaleFactor * grid.CellSize), bbox[1] - (scaleFactor * grid.CellSize), bbox[2] + (scaleFactor * grid.CellSize), bbox[3] + (scaleFactor * grid.CellSize)};
 }

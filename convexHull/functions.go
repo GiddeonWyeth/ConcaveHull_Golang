@@ -1,6 +1,9 @@
 package hull
 
-import "math"
+import (
+	"math"
+	"strconv"
+)
 
 func sqLength(a, b Point) float64 {
 	return math.Pow(b[0] - a[0], 2) + math.Pow(b[1] - a[1], 2);
@@ -17,7 +20,7 @@ func cos(o, a, b Point) float64 {
 }
 
 func _midPoint(edge, innerPoints, convex Points) Point {
-	var point Point = nil
+	var point Point = Point{}
 	angle1Cos := MAX_CONCAVE_ANGLE_COS
 	angle2Cos := MAX_CONCAVE_ANGLE_COS
 
@@ -26,9 +29,9 @@ func _midPoint(edge, innerPoints, convex Points) Point {
 		a2Cos := cos(edge[1], edge[0], innerPoints[i]);
 
 		if (a1Cos > angle1Cos && a2Cos > angle2Cos && !_intersect(Points{edge[0], innerPoints[i]}, convex) && !_intersect(Points{edge[1], innerPoints[i]}, convex)) {
-
 			angle1Cos = a1Cos;
 			angle2Cos = a2Cos;
+
 			point = innerPoints[i];
 		}
 	}
@@ -55,7 +58,7 @@ func occupiedArea(pointset Points) [2]float64 {
 	maxX := math.Inf(-1);
 	maxY := math.Inf(-1);
 
-	for i := len(pointset - 1); i >= 0; i-- {
+	for i := len(pointset) - 1; i >= 0; i-- {
 		if (pointset[i][0] < minX) {
 			minX = pointset[i][0];
 		}
@@ -81,13 +84,35 @@ func cross(o, a, b Point) float64 {
 	return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
 }
 
-//func ccw(x1, y1, x2, y2, x3, y3 float64) bool {
-//var cw = ((y3 - y1) * (x2 - x1)) - ((y2 - y1) * (x3 - x1));
-//return cw > 0 ? true : cw < 0 ? false : true;
-//}
-
-//Возможна ошибка!!!
 func intersect(seg1, seg2 Points) bool {
-	return ((cross(seg1[0], seg2[0], seg2[1]) >= 0) != (cross(seg1[1], seg2[0], seg2[1]) >= 0)) && ((cross(seg1[0], seg1[1], seg2[0]) >= 0) != (cross(seg1[0], seg1[1], seg2[1])))
-	//return ccw(x1, y1, x3, y3, x4, y4) != ccw(x2, y2, x3, y3, x4, y4) && ccw(x1, y1, x2, y2, x3, y3) != = ccw(x1, y1, x2, y2, x4, y4);
+	return ((cross(seg1[0], seg2[0], seg2[1]) >= float64(0)) != (cross(seg1[1], seg2[0], seg2[1]) >= float64(0))) && ((cross(seg1[0], seg1[1], seg2[0]) >= float64(0)) != (cross(seg1[0], seg1[1], seg2[1]) >= float64(0)))
+}
+
+func floatToString(input_num float64) string {
+	return strconv.FormatFloat(input_num, 'f', 0, 64)
+}
+
+func getConvexHullHalf(points Points) Points {
+	var result Points;
+	for i := len(points) - 1; i >= 0; i-- {
+		for len(result) >= 2 && cross(result[len(result) - 2], result[len(result) - 1], points[i]) <= 0 {
+			result = result[:len(result) - 1]
+		}
+		result = append(result, points[i])
+	}
+
+	return result[:len(result) - 1]
+}
+
+func getMidPoint(edge Points, convex Points, grid Grid, scaleFactor int) (Point, float64, float64, int) {
+	bBoxAround := bBoxAround(edge);
+
+	bBoxAround = grid.extendBbox(bBoxAround, float64(scaleFactor));
+	bBoxWidth := bBoxAround[2] - bBoxAround[0];
+	bBoxHeight := bBoxAround[3] - bBoxAround[1];
+	midPoint := _midPoint(edge, grid.rangePoints(bBoxAround), convex);
+
+	scaleFactor++;
+
+	return midPoint, bBoxWidth, bBoxHeight, scaleFactor
 }

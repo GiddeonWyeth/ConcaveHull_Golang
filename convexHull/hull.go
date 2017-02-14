@@ -5,60 +5,55 @@ import "math"
 var MAX_SEARCH_BBOX_SIZE_PERCENT = 0.6
 var MAX_CONCAVE_ANGLE_COS = math.Cos(90 / (180 / math.Pi));
 
-func concave(convex Points, maxSqEdgeLen float64, maxSearchArea [2]float64, grid Grid, edgeSkipList []bool) Points {
+func concave(convex Points, maxSqEdgeLen float64, maxSearchArea Point, grid Grid, edgeSkipList map[string]bool) Points {
 	var midPointInserted = false;
-	var midPoint Point = nil;
+	var midPoint Point = Point{};
 	var bBoxWidth float64;
 	var bBoxHeight float64;
+	var i int;
 
-	for i := 0; i < len(convex) - 1; i++ {
+	for i = 0; i < len(convex) - 1; i++ {
 		edge := Points{convex[i], convex[i + 1]};
-		keyInSkipList := string(edge[0][0]) + ',' + string(edge[0][1]) + ',' + string(edge[1][0]) + ',' + string(edge[1][1]);
+		keyInSkipList := floatToString(edge[0][0]) + "," + floatToString(edge[0][1]) + "," + floatToString(edge[1][0]) + "," + floatToString(edge[1][1]);
 
 		if (sqLength(edge[0], edge[1]) < maxSqEdgeLen) || (edgeSkipList[keyInSkipList] == true) {
 			continue;
 		}
 
 		scaleFactor := 0;
-		bBoxAround := bBoxAround(edge);
-		for midPoint == nil && (maxSearchArea[0] > bBoxWidth || maxSearchArea[1] > bBoxHeight) {
-			bBoxAround = grid.extendBbox(bBoxAround, scaleFactor);
-			bBoxWidth = bBoxAround[2] - bBoxAround[0];
-			bBoxHeight = bBoxAround[3] - bBoxAround[1];
-
-			midPoint = _midPoint(edge, grid.rangePoints(bBoxAround), convex);
-			scaleFactor++;
+		midPoint, bBoxWidth, bBoxHeight, scaleFactor = getMidPoint(edge, convex, grid, scaleFactor);
+		for midPoint == (Point{}) && (maxSearchArea[0] > bBoxWidth || maxSearchArea[1] > bBoxHeight) {
+			midPoint, bBoxWidth, bBoxHeight, scaleFactor = getMidPoint(edge, convex, grid, scaleFactor);
 		}
 
 		if (bBoxWidth >= maxSearchArea[0] && bBoxHeight >= maxSearchArea[1]) {
 			edgeSkipList[keyInSkipList] = true;
 		}
 
-		if (midPoint != nil) {
-			convex.splice(i + 1, 0, midPoint);
-			grid.removePoint(midPoint);
+		if (midPoint != (Point{})) {
+			convex = splice(convex, i + 1, 0, midPoint);
+			grid = grid.removePoint(midPoint);
 			midPointInserted = true;
 		}
 	}
 
-	if (midPointInserted) {
+	if (midPointInserted == true) {
 		return concave(convex, maxSqEdgeLen, maxSearchArea, grid, edgeSkipList);
 	}
 
 	return convex;
 }
 
-func hull(pointset Points, concavity int) {
+func Hull(pointset Points, concavity int) Points {
 
 	occupiedArea := occupiedArea(pointset);
-	maxSearchArea := [2]float64{occupiedArea[0] * MAX_SEARCH_BBOX_SIZE_PERCENT, occupiedArea[1] * MAX_SEARCH_BBOX_SIZE_PERCENT};
+	maxSearchArea := Point{occupiedArea[0] * MAX_SEARCH_BBOX_SIZE_PERCENT, occupiedArea[1] * MAX_SEARCH_BBOX_SIZE_PERCENT};
 
-	convex := ConvexHull(pointset);
-	innerPoints := Filter(pointset)
+	convex := convexHull(pointset);
+	innerPoints := Filter(pointset, convex).reverse()
 
 	cellSize := math.Ceil(1 / (float64(len(pointset)) / (occupiedArea[0] * occupiedArea[1])));
-
-	concave := concave(convex, math.Pow(float64(concavity), 2), maxSearchArea, createGrid{innerPoints, cellSize}, []bool{});
+	concave := concave(convex, math.Pow(float64(concavity), 2), maxSearchArea, createGrid(innerPoints, cellSize), map[string]bool{});
 
 	return concave;
 }
