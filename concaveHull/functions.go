@@ -1,4 +1,4 @@
-package hull
+package concaveHull
 
 import (
 	"math"

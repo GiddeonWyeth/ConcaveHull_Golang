@@ -1,4 +1,4 @@
-package hull
+package concaveHull
 
 type Point [2] float64
 
